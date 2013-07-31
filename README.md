@@ -1,3 +1,9 @@
+## pyg
+
+#### Usage:
+Create a file ``simulation.py`` and override the ``Chromosome`` class. 
+
+
 ## Genetic Algorithms
 
 #### The Chromosome
