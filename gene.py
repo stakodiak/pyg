@@ -1,16 +1,23 @@
 # gene.py - Runs genetic simulation.
 import random
+import string
 import math
 import threading
 import multiprocessing
 import sys
 import time
-from simulate import simulate_model # Fitness function
 
 # GA parameters
 POP_SIZE    = 100
 COPY_RATE   = 0.10
 MUTATE_RATE = 0.01
+TARGET = "Hello, world!"
+
+# Fitness function.
+def f (s, target="Hello, world!"):
+    # Assumes s and target are same length.
+    return sum ([(s[i]!=target[i]) for i in range (len (s))])
+
 
 def main ():
     start = time.time()
@@ -33,9 +40,12 @@ def main ():
 
 
 class Chromosome:
-    def __init__ (self):
+    def __init__ (self, genotype=None):
         # Parameters are: K_xy, K_xz, K_yz
-        self.genotype = [random.randint (0, 15) for i in range (3)]
+        if genotype is None:
+            self.genotype = "".join ([random.choice (string.printable) for i in range (len (TARGET))])
+        else:
+            self.genotype = genotype
         self.num_param = len (self.genotype)
         self.fitness = 0
      
@@ -57,10 +67,24 @@ class Chromosome:
         self.fitness = fitness
 
     def mutate (self):
-        # Mutates a random gene by log-normal scaling.
+        # Mutates a random gene by flipping bits.
         gene = random.choice (range (self.num_param))
-        self.genotype[gene] *= random.lognormvariate (0, 1)
-
+        g = self.genotype[gene] 
+        is_str = isinstance (g, str)
+        if is_str:
+            # A bit-string mutation.
+            g = ord (g)
+        b = bin (int(g))[2:]
+        g = list()
+        for i in b:
+            if random.random () < (1 / len(b)):
+                g.append (int (i) ^ 1)
+            else:
+                g.append (int (i))
+        g = int ("".join (map(str, g)), 2)
+        if is_str:
+            g = chr (g)
+        self.genotype [gene] = g 
 
 class MP_Simulation(multiprocessing.Process):
     # For when multiple cores are available. 
@@ -77,7 +101,7 @@ class MP_Simulation(multiprocessing.Process):
             if c is None:
                 break
             try:
-                fitness = simulate_model (c.genotype)
+                fitness = f (c.genotype)
             except:
                 pass
             c.fitness = fitness
@@ -101,7 +125,7 @@ class SimulationThread(threading.Thread):
             c = self.population [i]
             fitness = 0
             try:
-                fitness = simulate_model (c.genotype)
+                fitness = f (c.genotype)
             except:
                 pass
             self.population [i].fitness = fitness
@@ -183,7 +207,7 @@ class Gene:
     def unthreaded_simulation (self):
         # Run population through simulation.
         for c in self.population:
-            c.set_fitness (simulate_model (c.genotype))
+            c.set_fitness (f (c.genotype))
 
         #for c in sorted(self.population, key= lambda c: c.fitness):
         #    print "{: <12} {}".format (c.genotype, c.fitness)
