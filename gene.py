@@ -1,12 +1,11 @@
 # gene.py - Runs genetic simulation.
 import random
 import math
-import Queue
 import threading
 import multiprocessing
 import sys
 import time
-from simulate import simulate_model, get_time 
+from simulate import simulate_model # Fitness function
 
 # GA parameters
 POP_SIZE    = 100
@@ -14,22 +13,24 @@ COPY_RATE   = 0.10
 MUTATE_RATE = 0.01
 
 def main ():
-    
-    avg_fitness = list()
+    start = time.time()
+    # Gene is genetic algorithm class.
     g = Gene()
     num_iter = 10
-    print "Expected:", (POP_SIZE * num_iter) * get_time()
-    start = time.time() 
     for i in range (num_iter + 1):
-        # Go to beginning of line.
-        sys.stdout.write('\r')
+        # Print progress bar to estimate simulation time.
+        # e.g. [==================  ] 91%  21 sec 
+        sys.stdout.write('\r') # Go to beginning of line.
+        # n is number of '='s to fill in.
         n = int (math.floor (i / (num_iter / 20.0)))
         sys.stdout.write("[%-20s] %d%% %f sec" % ('='*n, float(i)/num_iter*100, time.time() - start))
         sys.stdout.flush()
+        # Let the bar go to 100%. 
         if i < num_iter:
             g.iterate ()
     print ""
     print '\n'.join (map (str, g.history))
+
 
 class Chromosome:
     def __init__ (self):
@@ -60,9 +61,12 @@ class Chromosome:
         gene = random.choice (range (self.num_param))
         self.genotype[gene] *= random.lognormvariate (0, 1)
 
+
 class MP_Simulation(multiprocessing.Process):
+    # For when multiple cores are available. 
     def __init__ (self, task_queue, result_queue):
         multiprocessing.Process.__init__(self)
+        # Delegates to each process through a queue. 
         self.task_queue = task_queue
         self.result_queue = result_queue
 
@@ -78,9 +82,10 @@ class MP_Simulation(multiprocessing.Process):
                 pass
             c.fitness = fitness
             self.result_queue.put (c)
-
             
+
 class SimulationThread(threading.Thread):
+    # Performance decreases with number of threads.
     def __init__ (self, population, starti, endi):
         threading.Thread.__init__(self)
         self.population = population
@@ -88,6 +93,7 @@ class SimulationThread(threading.Thread):
         self.endi = endi
 
     def run (self):
+        # Only simulate a portion of chromosome list. 
         starti = self.starti
         endi = self.endi
         num_iter = len (self.population) / 2
@@ -136,17 +142,21 @@ class Gene:
         self.population = population
 
     def simulate (self):
+        # Runs simulation on all cores.
         tasks = multiprocessing.Queue()
         results = multiprocessing.Queue()
         num_consumers = multiprocessing.cpu_count() * 2
+        # Consumers do the crunching.
         consumers = [ MP_Simulation (tasks, results)
                       for i in xrange (num_consumers) ]
         for w in consumers:
             w.start()
-
+        # Put population in queue.
         num_chrom = POP_SIZE
         for i in xrange (num_chrom):
             tasks.put (self.population [i])
+
+        # Stops calculations when it receives a None. 
         for i in xrange (num_consumers):
             tasks.put (None)
         population = list()
@@ -154,6 +164,7 @@ class Gene:
             C = results.get()
             population.append (C)
             num_chrom -= 1
+        # Save results.
         self.population = list(population)
             
     def simulate_thread (self):
@@ -169,17 +180,7 @@ class Gene:
         print [c.fitness for c in t1.population]
         self.population = list(t1.population)
 
-    def threaded_simulate (self, thread):
-        
-        half = int (POP_SIZE / 2)
-        start = 0 if thread == 1 else half
-        end = start + half
-        population = self.population [start:end]
-        for c in population:
-            c.fitness = simulate_model (c.genotype)
-        self.population[start:end] = population
-
-    def unthreaded_simulate (self):
+    def unthreaded_simulation (self):
         # Run population through simulation.
         for c in self.population:
             c.set_fitness (simulate_model (c.genotype))
@@ -188,7 +189,6 @@ class Gene:
         #    print "{: <12} {}".format (c.genotype, c.fitness)
         print ""
 
-        
     def selection (self):
         # Pick chromosomes with probability proportional to fitness.
         total_fitness = sum ([c.fitness for c in self.population])
@@ -212,13 +212,9 @@ class Gene:
                     if p < cum:
                         new_pop.append (c)
                         break
+        # Trim population
         new_pop = new_pop[:POP_SIZE]
-        #for c in sorted(new_pop, key= lambda c: c.fitness):
-        #    print "{: <12} {}".format (c.genotype, c.fitness)
         self.population = new_pop
-
-
-
 
         
 if __name__ == "__main__":
