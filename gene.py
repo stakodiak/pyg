@@ -6,6 +6,7 @@ import random
 
 
 class Chromosome(object):
+    """`pyg` works with these objects."""
     def __init__(self, genotype=None):
         if genotype:
             assert type(genotype) is list
@@ -31,7 +32,6 @@ class Chromosome(object):
         child = chromosome(genotype=genotype)
         return child
 
-
     def mutate(self):
         """Returns copy of mutated genotype.
 
@@ -45,7 +45,7 @@ class Chromosome(object):
         self.genotype[choice] = replacement[choice]
         return self
 
-class Pyg(object):
+class pyg(object):
     POP_SIZE = 1000
     MUTATION_RATE = 0.05
     COPY_RATE = 0.10
@@ -58,7 +58,7 @@ class Pyg(object):
             implementation.
         """
         self.chromosome = chromosome
-        self.population = [self.chromosome() for i in range(self.POP_SIZE)]
+        self.population = [self.chromosome() for _ in range(self.POP_SIZE)]
         self.iterations = 0
 
     def iterate(self):
