@@ -45,6 +45,7 @@ class Chromosome(object):
         self.genotype[choice] = replacement[choice]
         return self
 
+
 class pyg(object):
     POP_SIZE = 1000
     MUTATION_RATE = 0.05
